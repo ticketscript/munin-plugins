@@ -1,0 +1,131 @@
+#!/bin/sh
+# 
+# Plugin to monitor the innodb buffers
+#
+# Parameters:
+#       
+#       configure
+#       autoconf
+#
+# Configuration variables
+#
+#       mysqlopts     - Options to pass to mysql
+#
+# $Log$
+#
+#
+#%# family=auto
+#%# capabilities=autoconf
+
+MYSQLOPTS="$mysqlopts"
+MYSQLCLIENT=${mysql:-mysql}
+
+if [ "$1" = "autoconf" ]; then
+        $MYSQLCLIENT --version 2>/dev/null >/dev/null
+        if [ $? -eq 0 ]
+        then
+                $MYSQLCLIENT $MYSQLOPTS status 2>/dev/null >/dev/null
+                if [ $? -eq 0 ]
+                then
+                        echo yes
+                        exit 0
+                else
+                        echo "no (could not connect to mysql)"
+                fi
+        else
+                echo "no (mysql not found)"
+        fi
+        exit 1
+fi
+
+if [ "$1" = "config" ]; then
+	echo 'graph_title InnoDb buffer pages'
+	echo 'graph_category mysql'
+	echo 'graph_info The innodb buffer pages and there state'
+	echo 'graph_vlabel buffer pages'
+
+	echo 'Innodb_page_size.graph no';
+	echo 'Innodb_page_size.type GAUGE';
+	echo 'Innodb_page_size.min 0';
+	echo 'Innodb_page_size.label page size';
+	echo 'Innodb_page_size.draw LINE1';
+	echo 'Innodb_page_size.colour FF00FF'
+	
+	echo 'Innodb_buffer_pool_pages_total.graph no'
+	echo 'Innodb_buffer_pool_pages_total.type GAUGE'
+	echo 'Innodb_buffer_pool_pages_total.min 0'
+	echo 'Innodb_buffer_pool_pages_total.label total pages raw'
+	echo 'Innodb_buffer_pool_pages_total.draw AREA'
+	echo 'Innodb_buffer_pool_pages_total.colour 00B8F5'
+
+	echo 'Innodb_buffer_pool_pages_data.graph no'
+	echo 'Innodb_buffer_pool_pages_data.type GAUGE'
+	echo 'Innodb_buffer_pool_pages_data.min 0'
+	echo 'Innodb_buffer_pool_pages_data.label data pages raw'
+	echo 'Innodb_buffer_pool_pages_data.draw AREA'
+	echo 'Innodb_buffer_pool_pages_data.colour FFA600'
+
+	echo 'Innodb_buffer_pool_pages_free.graph no'
+	echo 'Innodb_buffer_pool_pages_free.type GAUGE'
+	echo 'Innodb_buffer_pool_pages_free.min 0'
+	echo 'Innodb_buffer_pool_pages_free.label free pages raw'
+	echo 'Innodb_buffer_pool_pages_free.draw AREA'
+	echo 'Innodb_buffer_pool_pages_free.colour 00CF00'
+
+	echo 'Innodb_buffer_pool_pages_dirty.graph no'
+	echo 'Innodb_buffer_pool_pages_dirty.type GAUGE'
+	echo 'Innodb_buffer_pool_pages_dirty.min 0'
+	echo 'Innodb_buffer_pool_pages_dirty.label dirty pages raw'
+	echo 'Innodb_buffer_pool_pages_dirty.draw LINE2'
+	echo 'Innodb_buffer_pool_pages_dirty.colour 00B8F5'
+
+	# -----
+	echo 'pages_total.graph yes'
+	echo 'pages_total.type GAUGE'
+	echo 'pages_total.min 0'
+	echo 'pages_total.label total pages'
+	echo 'pages_total.draw AREA'
+	echo 'pages_total.colour 00B8F5'
+	echo 'pages_total.cdef Innodb_page_size,Innodb_buffer_pool_pages_total,*'
+
+	echo 'pages_data.graph yes'
+	echo 'pages_data.type GAUGE'
+	echo 'pages_data.min 0'
+	echo 'pages_data.label data pages'
+	echo 'pages_data.draw AREA'
+	echo 'pages_data.colour FFA600'
+	echo 'pages_data.cdef Innodb_page_size,Innodb_buffer_pool_pages_data,*'
+
+	echo 'pages_free.graph yes'
+	echo 'pages_free.type GAUGE'
+	echo 'pages_free.min 0'
+	echo 'pages_free.label free pages'
+	echo 'pages_free.draw AREA'
+	echo 'pages_free.colour 00CF00'
+	echo 'pages_free.cdef Innodb_page_size,Innodb_buffer_pool_pages_free,*'
+
+	echo 'pages_dirty.graph yes'
+	echo 'pages_dirty.type GAUGE'
+	echo 'pages_dirty.min 0'
+	echo 'pages_dirty.label dirty pages'
+	echo 'pages_dirty.draw LINE2'
+	echo 'pages_dirty.colour 00B8F5'
+	echo 'pages_dirty.cdef Innodb_page_size,Innodb_buffer_pool_pages_dirty,*'
+	
+        exit 0
+fi
+
+$MYSQLCLIENT $MYSQLOPTS -e "SHOW STATUS LIKE 'innodb%'" --batch | while read key value; do
+	case $key in
+		"Innodb_buffer_pool_pages_total") echo "$key.value $value";
+		;;
+		"Innodb_buffer_pool_pages_data") echo "$key.value $value";
+		;;
+		"Innodb_buffer_pool_pages_free") echo "$key.value $value";
+		;;
+		"Innodb_buffer_pool_pages_dirty") echo "$key.value $value";
+		;;
+		"Innodb_page_size") echo "$key.value $value";
+		;;
+	esac
+done
